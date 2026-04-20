@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LOL-SBTI 职业选手人格测试</title>
+    <style>
+        :root { --bg: #0a0a0a; --card: #1a1a1a; --text: #e0e0e0; --accent: #d4af37; }
+        body { font-family: 'PingFang SC', sans-serif; background: var(--bg); color: var(--text); display: flex; justify-content: center; margin: 0; padding: 20px; }
+        #app { width: 100%; max-width: 500px; background: var(--card); border: 2px solid var(--accent); padding: 30px; box-shadow: 0 0 20px rgba(212,175,55,0.2); }
+        h1 { text-align: center; color: var(--accent); letter-spacing: 4px; border-bottom: 1px solid var(--accent); padding-bottom: 10px; }
+        .question-title { font-size: 20px; font-weight: bold; margin-bottom: 25px; line-height: 1.4; }
+        .option-btn { display: block; width: 100%; padding: 18px; margin-bottom: 15px; background: none; border: 1px solid #444; color: var(--text); text-align: left; cursor: pointer; transition: 0.3s; font-size: 16px; }
+        .option-btn:hover { background: var(--accent); color: #000; border-color: var(--accent); }
+        #result { display: none; text-align: center; }
+        .player-img { width: 100%; height: 300px; background: #333; margin: 20px 0; object-fit: cover; border: 2px solid var(--accent); }
+        .player-name { font-size: 28px; font-weight: 900; color: var(--accent); margin: 10px 0; }
+        .player-desc { text-align: left; line-height: 1.8; color: #ccc; background: #222; padding: 15px; border-left: 4px solid var(--accent); }
+        .restart-btn { width: 100%; padding: 15px; background: var(--accent); color: #000; border: none; font-weight: bold; margin-top: 20px; cursor: pointer; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div id="start-screen">
+        <h1>LOL-SBTI</h1>
+        <p style="text-align:center; color:#888;">测测你的电竞灵魂契合哪位选手</p>
+        <button class="restart-btn" onclick="startQuiz()">进入峡谷</button>
+    </div>
+    <div id="quiz-screen" style="display:none;">
+        <div id="progress" style="text-align:right; font-size:12px; color:#888; margin-bottom:10px;">1 / 30</div>
+        <div id="q-text" class="question-title">加载中...</div>
+        <div id="options-container"></div>
+    </div>
+    <div id="result">
+        <div style="font-size:14px; color:var(--accent);">测试结果：你是</div>
+        <div class="player-name" id="res-name"></div>
+        <div id="res-code" style="font-size:18px; font-weight:bold; margin-bottom:10px;"></div>
+        <img id="res-img" class="player-img" src="" alt="选手梗图">
+        <div class="player-desc" id="res-desc"></div>
+        <button class="restart-btn" onclick="location.reload()">不服再测</button>
+    </div>
+</div>
+<script>
+const players = {
+    "faker": { name: "Faker", code: "神 / GOAT", desc: "众神之神。除了吃香蕉和切屏，你对人类的欲望毫无兴趣。如果输了，那一定是摄像头没摆正或者是发现公司冰箱里的可乐竟然要钱。", img: "images/faker.jpg" },
+    "showmaker": { name: "Showmaker", code: "浪漫诗人", desc: "奎桑提文学奠基人。那年你双手插兜，不知道什么是对手；今年你双手插兜，发现兜里全是数值怪。", img: "images/showmaker.jpg" },
+    "bin": { name: "Bin", code: "世一博 / 割肉机", desc: "双眼皮是勋章，微博是主场。比赛可以输，亮标必须响，只想打架或者是发条微博震撼所有人。", img: "images/bin.jpg" },
+    "knight": { name: "Knight", code: "处理专家 / 纯良宝宝", desc: "关键时刻隐身，休息时间处理“意外”。没有什么问题是一次手术解决不了的，如果有，那就再去读一本书。", img: "images/knight.jpg" },
+    "uzi": { name: "Uzi", code: "红温本体 / 澡神", desc: "永远的神。脸红不是因为害羞，而是因为水温到了。只要不洗澡，这把就能翻。", img: "images/uzi.jpg" },
+    "ruler": { name: "Ruler", code: "税务局长 / 表面队友", desc: "你的箭很准，你的账更准。精准计算奖金去向，并时刻保持与打野的“安全距离”。", img: "images/ruler.jpg" },
+    "chovy": { name: "Chovy", code: "88848 / 补刀怪", desc: "今年真的不一样了！虽然心态易碎且一辈子没拿冠军，但只要有兵补，世界就还没毁灭。", img: "images/chovy.jpg" },
+    "jackeylove": { name: "JackeyLove", code: "接 Q 神 / 赌徒", desc: "接Q是冒险，闪现是宿命。你是真正的赌徒，用职业生涯博一个闪现向前的瞬间。", img: "images/jkl.jpg" },
+    "theshy": { name: "TheShy", code: "别吃 / 僵王", desc: "长手打短手是你的慈悲。不在乎赢，只在乎对面那个兵他能不能吃到。", img: "images/theshy.jpg" },
+    "gumayusi": { name: "Gumayusi", code: "绝境吕布 / 心态墙", desc: "T1的最后承重墙。即便家门口停满卡车，你也能淡定1v2守住底线。", img: "images/guma.jpg" },
+    "keria": { name: "Keria", code: "变紫天才", desc: "辅助玩一切。输球瞬间你的脸色能从白变紫再变紫。", img: "images/keria.jpg" },
+    "elk": { name: "Elk", code: "切割大师 / 清者自清", desc: "输了就切割。直播骂观众，发微博表清白，你是专业的。", img: "images/elk.jpg" },
+    "meiko": { name: "Meiko", code: "不粘锅 / 女粉护体", desc: "大满贯不粘锅。即便操作再下饭，女粉也会帮你冲掉所有质疑。", img: "images/meiko.jpg" },
+    "scout": { name: "Scout", code: "违约讼棍", desc: "法律边缘的游走者。违约金不过是另一场比赛的入场券。", img: "images/scout.jpg" },
+    "imp": { name: "Imp", code: "精神病院长 / 炫耀狂", desc: "我有冠军你呢？酒精是燃料，嘴臭是交流。", img: "images/imp.jpg" },
+    "369": { name: "369", code: "德州赌神 / 摇号机", desc: "拒绝拉扯，直接All-in。状态取决于骰子点数。", img: "images/369.jpg" },
+    "yagao": { name: "牙膏", code: "LCK 严父 / 萍乡神厨", desc: "血脉压制。你证明了天赋这种东西，练一辈子也没用。", img: "images/yagao.jpg" },
+    "zeka": { name: "Zeka", code: "弑神者 / 推屁股专家", desc: "近战肉搏。看到神的背影，你只想上去推一下。", img: "images/zeka.jpg" },
+    "peanut": { name: "Peanut", code: "交际花 / 颜值担当", desc: "用最帅的脸抢最狠的野。", img: "images/peanut.jpg" },
+    "kanavi": { name: "Kanavi", code: "F6 守护者 / 报韩者", desc: "为了F6可以牺牲一切，心在LCK。", img: "images/kanavi.jpg" },
+    "gala": { name: "GALA", code: "机械猛男", desc: "无表情，无情绪。健身房的肌肉是你唯一的表情。", img: "images/gala.jpg" },
+    "caps": { name: "Caps", code: "变脸老帽", desc: "欧洲最后的遮羞布。", img: "images/caps.jpg" },
+    "doublelift": { name: "Doublelift", code: "垃圾分类员", desc: "在座的各位都是垃圾。", img: "images/dl.jpg" },
+    "karsa": { name: "Karsa", code: "拉扯导师", desc: "扫描队友的叛逆期。拉扯不进野区，更在脑子里。", img: "images/karsa.jpg" }
+};
+const questions = [
+    { q: "当你 0-5 开局，路人队友疯狂发信号质疑你：", options: [{ t: "吃根香蕉，内心毫无波动", s: "faker" }, { t: "脸色变紫，选派克辅助证明自己", s: "keria" }, { t: "打字：那种拉扯，你懂吗？", s: "karsa" }, { t: "屏蔽，刀得补满", s: "chovy" }]},
+    { q: "看到对面残血在塔下跳舞挑衅：", options: [{ t: "有闪现就上去捅他屁股", s: "zeka" }, { t: "亮标，准备发微博", s: "bin" }, { t: "算越塔风险是否影响个税申报", s: "ruler" }, { t: "长手打短手，折磨他", s: "theshy" }]},
+    { q: "打野不小心惩戒掉了你的蓝 buff：", options: [{ t: "反手吃他 F6 止损", s: "kanavi" }, { t: "表面不粘锅，心里已拉黑", s: "meiko" }, { t: "胸口发烫，想去洗澡", s: "uzi" }, { t: "在座各位都是垃圾", s: "doublelift" }]},
+    { q: "有人找上门说你有个私生子：", options: [{ t: "果断处理掉，别影响我读书", s: "knight" }, { t: "写段圣经，人生如戏", s: "showmaker" }, { t: "咨询这是否违约", s: "scout" }, { t: "发微博：清者自清", s: "elk" }]},
+    { q: "如果你有一笔闲钱：", options: [{ t: "全梭哈德州扑克", s: "369" }, { t: "存起来，一分不花", s: "faker" }, { t: "去割双眼皮", s: "bin" }, { t: "拿去练肌肉", s: "gala" }]}
+];
+while(questions.length < 30) questions.push(questions[questions.length % 5]);
+let cur = 0, scores = {};
+function startQuiz() { document.getElementById('start-screen').style.display='none'; document.getElementById('quiz-screen').style.display='block'; showQ(); }
+function showQ() {
+    const q = questions[cur];
+    document.getElementById('progress').innerText = `${cur + 1} / 30`;
+    document.getElementById('q-text').innerText = q.q;
+    const container = document.getElementById('options-container'); container.innerHTML = '';
+    q.options.forEach(o => {
+        const b = document.createElement('button'); b.className = 'option-btn'; b.innerText = o.t;
+        b.onclick = () => { scores[o.s] = (scores[o.s] || 0) + 1; cur++; if(cur < 30) showQ(); else showResult(); };
+        container.appendChild(b);
+    });
+}
+function showResult() {
+    document.getElementById('quiz-screen').style.display='none';
+    document.getElementById('result').style.display='block';
+    let winner = Object.keys(scores).sort((a,b)=>scores[b]-scores[a])[0] || 'faker';
+    const p = players[winner];
+    document.getElementById('res-name').innerText = p.name;
+    document.getElementById('res-code').innerText = p.code;
+    document.getElementById('res-desc').innerText = p.desc;
+    document.getElementById('res-img').src = p.img;
+}
+</script>
+</body>
+</html>
